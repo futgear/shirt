@@ -26,13 +26,14 @@ float   adc_B0, adc_B1, adc_B2, adc_B3, adc_B4, adc_B5, adc_B6, adc_B7;
 float   adc_C0, adc_C1, adc_C2, adc_C3, adc_C4, adc_C5, adc_C6, adc_C7;
 float   adc_D0, adc_D1, adc_D2, adc_D3, adc_D4, adc_D5, adc_D6, adc_D7;
 
-float stepsize = 1;
-int selected_key = 0;
+float   stepsize = 1;
+int     selected_key = 0;
 
 //------------------------------------------------------------------------------------------ 
 // Setup
 //------------------------------------------------------------------------------------------ 
-void setup()  { 
+void setup()
+{
  
   // read default settings from file  
   settings = getSettingsFromFile("calibration.txt");
@@ -51,7 +52,8 @@ void setup()  {
 //------------------------------------------------------------------------------------------ 
 // connect to serial port
 //------------------------------------------------------------------------------------------ 
-void connectPort(int portIndex){
+void connectPort(int portIndex)
+{
   try{
     String portName = Serial.list()[portIndex];
     println(" Connecting to -> " + Serial.list()[portIndex]);
@@ -346,32 +348,18 @@ Float conval(Float rawvalue, String bodyPart)
 // draw the screen
 //------------------------------------------------------------------------------------------ 
 void draw()
-{ 
+{
   background(0);
-    
-  // Tweak the view of the rectangles
-  int distance = 50;
-  int x_rotation = 90;
-  
-  ///TEXT OUTPUT
+  renderText();
+  renderBody();
+}
+
+//------------------------------------------------------------------------------------------ 
+// render the Text to the screen
+//------------------------------------------------------------------------------------------ 
+void renderText()
+{
   textSize(24);
-  String accStr = "(" + (int) x_acc + ", " + (int) y_acc + ")";
-  String gyrStr = "(" + (int) x_gyr + ", " + (int) y_gyr + ")";
-  String filStr = "(" + (int) x_fil + ", " + (int) y_fil + ")";
-
-  fill(249, 250, 50);
-  text("Gyroscope", (int) width/6.0 - 60, 25);
-  text(gyrStr, (int) (width/6.0) - 40, 50);
-
-  fill(56, 140, 206);
-  text("stepsize", (int) width/2.0 - 50, 25);
-  text(stepsize, (int) (width/2.0) - 30, 50); 
-  //text(accStr, (int) (width/2.0) - 30, 50); 
-  
-  fill(83, 175, 93);
-  text("Combination", (int) (5.0*width/6.0) - 40, 25);
-  text(filStr, (int) (5.0*width/6.0) - 20, 50);
-
   int colwidth=150;
   int x_col0=400;
   int x_col1=x_col0+colwidth/3;
@@ -384,8 +372,22 @@ void draw()
   int y_cursor=15;
   int lineheight=3;
 
-  fill(99, 99, 99);
+  String accStr = " " + (int) x_acc + ", " + (int) y_acc + " ";
+  String gyrStr = " " + (int) x_gyr + ", " + (int) y_gyr + " ";
+  String filStr = " " + (int) x_fil + ", " + (int) y_fil + " ";
 
+  fill(249, 250, 50);
+  text("GYR:", x_col0, (height/100)*y_cursor);
+  text(gyrStr, x_col1, (height/100)*y_cursor);
+  fill(56, 140, 206);
+  text("TMP:", x_col2, (height/100)*y_cursor);
+  text(temp  , x_col3, (height/100)*y_cursor);   
+  fill(83, 175, 93);
+  text("ACC:", x_col4, (height/100)*y_cursor);
+  text(filStr, x_col5, (height/100)*y_cursor);
+  y_cursor+=lineheight;
+
+  fill(99, 99, 99);
   text("A0: ", x_col0, (height/100)*y_cursor);
   text(adc_A0, x_col1, (height/100)*y_cursor);
   text("B0: ", x_col2, (height/100)*y_cursor);
@@ -464,12 +466,10 @@ void draw()
   y_cursor+=lineheight;
   text("forearmL_Y: ", x_col5, (height/100)*y_cursor);
   text(settings.get("forearmL_Y"), x_col7, (height/100)*y_cursor);
-
-  renderBody();
 }
 
 //------------------------------------------------------------------------------------------ 
-// render the body to the screen
+// render the 3D-model to the screen
 //------------------------------------------------------------------------------------------ 
 void renderBody()
 {
