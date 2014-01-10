@@ -1,35 +1,23 @@
-/**
- * Show GY521 Data.
- * 
- * Reads the serial port to get x- and y- axis rotational data from an accelerometer,
- * a gyroscope, and comeplementary-filtered combination of the two, and displays the
- * orientation data as it applies to three different colored rectangles.
- * It gives the z-orientation data as given by the gyroscope, but since the accelerometer
- * can't provide z-orientation, we don't use this data.
- * 
- */
- 
 import processing.serial.*;
 import java.util.*;
 
 // Note the HashMap's "key" is a String and "value" is an Float
 HashMap<String,Float> settings = new HashMap<String,Float>();
 
-// The serial port:
 Serial  myPort;
 int     portIndex = 0;
-int     lf = 10;       //ASCII linefeed
-String  inString;      //String for testing serial communication
-int     calibrating;
+int     lf = 10;      // ASCII linefeed
+String  inString;     // String for serial communication
  
-float   dt;
-float   x_gyr;  //Gyroscope data
+float   temp;         // Temperature
+float   dt;           // Delta
+float   x_gyr;        // Gyroscope data
 float   y_gyr;
 float   z_gyr;
-float   x_acc;  //Accelerometer data
+float   x_acc;        // Accelerometer data
 float   y_acc;
 float   z_acc;
-float   x_fil;  //Filtered data
+float   x_fil;        // Filtered data
 float   y_fil;
 float   z_fil;
 
@@ -41,11 +29,15 @@ float   adc_D0, adc_D1, adc_D2, adc_D3, adc_D4, adc_D5, adc_D6, adc_D7;
 float stepsize = 1;
 int selected_key = 0;
 
+//------------------------------------------------------------------------------------------ 
+// Setup
+//------------------------------------------------------------------------------------------ 
 void setup()  { 
  
-  //BODY ****************************************  
+  // read default settings from file  
   settings = getSettingsFromFile("calibration.txt");
 
+  // get last used portindex from settings
   portIndex = int(""+ settings.get("port") +"");
   
   // size(640, 360, P3D); 
@@ -56,6 +48,9 @@ void setup()  {
   connectPort(portIndex);
 } 
 
+//------------------------------------------------------------------------------------------ 
+// connect to serial port
+//------------------------------------------------------------------------------------------ 
 void connectPort(int portIndex){
   try{
     String portName = Serial.list()[portIndex];
@@ -68,132 +63,13 @@ void connectPort(int portIndex){
   }  
 }
 
-void draw()  { 
-  background(0);
-    
-  // Tweak the view of the rectangles
-  int distance = 50;
-  int x_rotation = 90;
-  
-  ///TEXT OUTPUT
-  textSize(24);
-  String accStr = "(" + (int) x_acc + ", " + (int) y_acc + ")";
-  String gyrStr = "(" + (int) x_gyr + ", " + (int) y_gyr + ")";
-  String filStr = "(" + (int) x_fil + ", " + (int) y_fil + ")";
-
-  fill(249, 250, 50);
-  text("Gyroscope", (int) width/6.0 - 60, 25);
-  text(gyrStr, (int) (width/6.0) - 40, 50);
-
-  fill(56, 140, 206);
-  text("stepsize", (int) width/2.0 - 50, 25);
-  text(stepsize, (int) (width/2.0) - 30, 50); 
-  //text(accStr, (int) (width/2.0) - 30, 50); 
-  
-  fill(83, 175, 93);
-  text("Combination", (int) (5.0*width/6.0) - 40, 25);
-  text(filStr, (int) (5.0*width/6.0) - 20, 50);
-
-  int colwidth=150;
-  int x_col0=400;
-  int x_col1=x_col0+colwidth/3;
-  int x_col2=x_col1+colwidth;
-  int x_col3=x_col2+colwidth/3;
-  int x_col4=x_col3+colwidth;
-  int x_col5=x_col4+colwidth/3;
-  int x_col6=x_col5+colwidth;
-  int x_col7=x_col6+colwidth/3;
-  int y_cursor=15;
-  int lineheight=3;
-
-  fill(99, 99, 99);
-
-  text("A0: ", x_col0, (height/100)*y_cursor);
-  text(adc_A0, x_col1, (height/100)*y_cursor);
-  text("B0: ", x_col2, (height/100)*y_cursor);
-  text(adc_B0, x_col3, (height/100)*y_cursor);
-  text("C0: ", x_col4, (height/100)*y_cursor);
-  text(adc_C0, x_col5, (height/100)*y_cursor);
-  text("D0: ", x_col6, (height/100)*y_cursor);
-  text(adc_D0, x_col7, (height/100)*y_cursor);
-  y_cursor+=lineheight;
-  text("A1: ", x_col0, (height/100)*y_cursor);
-  text(adc_A1, x_col1, (height/100)*y_cursor);
-  text("B1: ", x_col2, (height/100)*y_cursor);
-  text(adc_B1, x_col3, (height/100)*y_cursor);
-  text("C1: ", x_col4, (height/100)*y_cursor);
-  text(adc_C1, x_col5, (height/100)*y_cursor);
-  text("D1: ", x_col6, (height/100)*y_cursor);
-  text(adc_D1, x_col7, (height/100)*y_cursor);
-  y_cursor+=lineheight;
-  text("A2: ", x_col0, (height/100)*y_cursor);
-  text(adc_A2, x_col1, (height/100)*y_cursor);
-  text("B2: ", x_col2, (height/100)*y_cursor);
-  text(adc_B2, x_col3, (height/100)*y_cursor);
-  text("C2: ", x_col4, (height/100)*y_cursor);
-  text(adc_C2, x_col5, (height/100)*y_cursor);
-  text("D2: ", x_col6, (height/100)*y_cursor);
-  text(adc_D2, x_col7, (height/100)*y_cursor);
-  y_cursor+=lineheight;
-  text("A3: ", x_col0, (height/100)*y_cursor);
-  text(adc_A3, x_col1, (height/100)*y_cursor);
-  text("B3: ", x_col2, (height/100)*y_cursor);
-  text(adc_B3, x_col3, (height/100)*y_cursor);
-  text("C3: ", x_col4, (height/100)*y_cursor);
-  text(adc_C3, x_col5, (height/100)*y_cursor);
-  text("D3: ", x_col6, (height/100)*y_cursor);
-  text(adc_D3, x_col7, (height/100)*y_cursor);
-  y_cursor+=lineheight;
-  text("A4: ", x_col0, (height/100)*y_cursor);
-  text(adc_A4, x_col1, (height/100)*y_cursor);
-  text("B4: ", x_col2, (height/100)*y_cursor);
-  text(adc_B4, x_col3, (height/100)*y_cursor);
-  text("C4: ", x_col4, (height/100)*y_cursor);
-  text(adc_C4, x_col5, (height/100)*y_cursor);
-  text("D4: ", x_col6, (height/100)*y_cursor);
-  text(adc_D4, x_col7, (height/100)*y_cursor);
-  y_cursor+=lineheight;
-  text("A5: ", x_col0, (height/100)*y_cursor);
-  text(adc_A5, x_col1, (height/100)*y_cursor);
-  text("B5: ", x_col2, (height/100)*y_cursor);
-  text(adc_B5, x_col3, (height/100)*y_cursor);
-  text("C5: ", x_col4, (height/100)*y_cursor);
-  text(adc_C5, x_col5, (height/100)*y_cursor);
-  text("D5: ", x_col6, (height/100)*y_cursor);
-  text(adc_D5, x_col7, (height/100)*y_cursor);
-  y_cursor+=lineheight;
-  text("A6: ", x_col0, (height/100)*y_cursor);
-  text(adc_A6, x_col1, (height/100)*y_cursor);
-  text("B6: ", x_col2, (height/100)*y_cursor);
-  text(adc_B6, x_col3, (height/100)*y_cursor);
-  text("C6: ", x_col4, (height/100)*y_cursor);
-  text(adc_C6, x_col5, (height/100)*y_cursor);
-  text("D6: ", x_col6, (height/100)*y_cursor);
-  text(adc_D6, x_col7, (height/100)*y_cursor);
-  y_cursor+=lineheight;
-  text("A7: ", x_col0, (height/100)*y_cursor);
-  text(adc_A7, x_col1, (height/100)*y_cursor);
-  text("B7: ", x_col2, (height/100)*y_cursor);
-  text(adc_B7, x_col3, (height/100)*y_cursor);
-  text("C7: ", x_col4, (height/100)*y_cursor);
-  text(adc_C7, x_col5, (height/100)*y_cursor);
-  text("D7: ", x_col6, (height/100)*y_cursor);
-  text(adc_D7, x_col7, (height/100)*y_cursor);
-  y_cursor+=lineheight;
-  y_cursor+=lineheight;
-  text("forearmR_Y: ", x_col5, (height/100)*y_cursor);
-  text(settings.get("forearmR_Y"), x_col7, (height/100)*y_cursor);
-  y_cursor+=lineheight;
-  text("forearmL_Y: ", x_col5, (height/100)*y_cursor);
-  text(settings.get("forearmL_Y"), x_col7, (height/100)*y_cursor);
-
-  renderBody();
-}
-
-
-//Read settings from a textfile, the settings must contain "key=value" where value is a float and key is a string.
-//No whitespaces allowed in the configtextfile!
-HashMap<String,Float> getSettingsFromFile(String filename){
+//------------------------------------------------------------------------------------------ 
+// Read settings from a textfile.
+// The settings must contain "key=value" where value is a float and key is a string.
+// No whitespaces allowed in the configtextfile!
+//------------------------------------------------------------------------------------------ 
+HashMap<String,Float> getSettingsFromFile(String filename)
+{
   println("------------------------------------------");
   println("Loading settings from: "+filename);
   HashMap<String,Float> hm = new HashMap<String,Float>();
@@ -208,118 +84,13 @@ HashMap<String,Float> getSettingsFromFile(String filename){
     }
   }
   return hm;
-
 }
 
-
-//Write settings to a textfile.
-Boolean setSettingsToFile(HashMap<String,Float> hm, String filename){
-  
-  ArrayList settings_keys = new ArrayList(settings.keySet());
-  Collections.sort(settings_keys);
-  
-  String[] settings_string = new String[hm.size()];
-  for(int i=0; i<settings_keys.size(); i++){
-    String keyname = settings_keys.get(i).toString();
-    Float value = settings.get(keyname);
-    settings_string[i] = keyname + "=" + value;
-    print(".");
-  }
-  println("...done.");
-  saveStrings("data/"+filename, settings_string);
-  return true;
-
-}
-
-
-void keyPressed() {
-  String keyname="";
-  float value=0;
-  ArrayList settings_keys = new ArrayList(settings.keySet());
-  Collections.sort(settings_keys);
-  //select setting
-  if(key == 'w'){
-    if(selected_key<settings_keys.size()-1){
-      selected_key = selected_key+1;
-    }
-  }
-  if(key == 's'){
-    if(selected_key>0){
-      selected_key=selected_key-1;
-    }
-  }
-  keyname = settings_keys.get(selected_key).toString();
-  println("setting: " + keyname);
-  value = settings.get(keyname);
-
-  //changing stepsize which will be added/substracted
-  if(key == '+'){
-    stepsize = stepsize*10;
-  }
-  if(key == '-'){
-    stepsize = stepsize/10;
-  }
-
-  //increase/decrease selected settings value
-  if(keyCode == UP){
-    settings.put(keyname, value+stepsize);
-    println(keyname +" = "+ settings.get(keyname));
-  }
-   if(keyCode == DOWN){
-    settings.put(keyname, value-stepsize);
-    println(keyname +" = "+ settings.get(keyname));
-  }
-
-  if(key == '#'){
-    println("Saving... ");
-    setSettingsToFile(settings,"calibration.txt");
-  }
-  if(key == 'p'){
-    println("Reconnect Port... ");
-    connectPort(portIndex);
-  }
-  if(key == 'l'){
-    println("Load Configfile... ");
-    settings = getSettingsFromFile("calibration.txt");
-  }
-
-  if(key == '1' || key == '2' || key == '3' || key == '4' || key == '5' || key == '6' || key == '7' || key == '8'|| key == '9'|| key == '0'){
-    portIndex = int(key)-48;
-    settings.put("port", float(portIndex));
-    println("Setting Port Index: "+ float(portIndex));
-    setSettingsToFile(settings,"calibration.txt");
-    connectPort(portIndex);
-  }
-}
-
-//inserts red marker box onto the body for orientation clarification
-void insertmarker(float sphereSize){
-  translate(0, 0, 10);
-  fill(255,0,0);
-  box(sphereSize/2, sphereSize/2, sphereSize/2); 
-  translate(0, 0, -10);
-  fill(99, 99, 99);
-}
-
-//match the range and position of bodyparts to inputvalues of the arduino
-Float conval(Float rawvalue, String bodyPart){
-      
-      float bodyRange=settings.get(bodyPart+"_hwRange");
-      float offset=settings.get(bodyPart+"_hwOff");
-      float minvalue=settings.get(bodyPart+"_hwMin");
-      float maxvalue=settings.get(bodyPart+"_hwMax");
-
-      float adcRange = 4096;
-      try{
-        adcRange = maxvalue - minvalue;
-      }catch(Exception e){
-        println("--------------- Could not calculate hwRange "+ maxvalue +" - "+minvalue);
-      }
-      rawvalue = offset + (bodyRange * ((rawvalue - minvalue) / adcRange));
-  return rawvalue;
-}
-
-void serialEvent(Serial p) {
+//------------------------------------------------------------------------------------------ 
+// read the serialinput
+//------------------------------------------------------------------------------------------ 
+void serialEvent(Serial p)
+{
   inString = (myPort.readString());
   try{
     // Parse the data
@@ -329,6 +100,8 @@ void serialEvent(Serial p) {
       String dataval = dataStrings[i].substring(4);
       if (type.equals("DEL:")) {
         dt = float(dataval);
+      } else if (type.equals("TMP:")) {
+        temp = float(dataval);
       } else if (type.equals("ACC:")) {
         String data[] = split(dataval, ',');
         x_acc = float(data[0]);
@@ -453,7 +226,253 @@ void serialEvent(Serial p) {
   }
 }
 
-void renderBody(){
+//------------------------------------------------------------------------------------------ 
+// Write settings to a textfile.
+//------------------------------------------------------------------------------------------ 
+Boolean setSettingsToFile(HashMap<String,Float> hm, String filename)
+{
+  ArrayList settings_keys = new ArrayList(settings.keySet());
+  Collections.sort(settings_keys);
+  
+  String[] settings_string = new String[hm.size()];
+  for(int i=0; i<settings_keys.size(); i++){
+    String keyname = settings_keys.get(i).toString();
+    Float value = settings.get(keyname);
+    settings_string[i] = keyname + "=" + value;
+    print(".");
+  }
+  println("...done.");
+  saveStrings("data/"+filename, settings_string);
+  return true;
+}
+
+//------------------------------------------------------------------------------------------ 
+// keyboard controls
+//------------------------------------------------------------------------------------------ 
+void keyPressed()
+{
+  String keyname="";
+  float value=0;
+  ArrayList settings_keys = new ArrayList(settings.keySet());
+  Collections.sort(settings_keys);
+  //select setting
+  if(key == 'w'){
+    if(selected_key<settings_keys.size()-1){
+      selected_key = selected_key+1;
+    }
+  }
+  if(key == 's'){
+    if(selected_key>0){
+      selected_key=selected_key-1;
+    }
+  }
+  keyname = settings_keys.get(selected_key).toString();
+  println("setting: " + keyname);
+  value = settings.get(keyname);
+
+  //changing stepsize which will be added/substracted
+  if(key == '+'){
+    stepsize = stepsize*10;
+  }
+  if(key == '-'){
+    stepsize = stepsize/10;
+  }
+
+  //increase/decrease selected settings value
+  if(keyCode == UP){
+    settings.put(keyname, value+stepsize);
+    println(keyname +" = "+ settings.get(keyname));
+  }
+   if(keyCode == DOWN){
+    settings.put(keyname, value-stepsize);
+    println(keyname +" = "+ settings.get(keyname));
+  }
+
+  if(key == '#'){
+    println("Saving... ");
+    setSettingsToFile(settings,"calibration.txt");
+  }
+  if(key == 'p'){
+    println("Reconnect Port... ");
+    connectPort(portIndex);
+  }
+  if(key == 'l'){
+    println("Load Configfile... ");
+    settings = getSettingsFromFile("calibration.txt");
+  }
+
+  if(key == '1' || key == '2' || key == '3' || key == '4' || key == '5' || key == '6' || key == '7' || key == '8'|| key == '9'|| key == '0'){
+    portIndex = int(key)-48;
+    settings.put("port", float(portIndex));
+    println("Setting Port Index: "+ float(portIndex));
+    setSettingsToFile(settings,"calibration.txt");
+    connectPort(portIndex);
+  }
+}
+
+//------------------------------------------------------------------------------------------ 
+// inserts red marker box onto the body for orientation clarification
+//------------------------------------------------------------------------------------------ 
+void insertmarker(float sphereSize)
+{
+  translate(0, 0, 10);
+  fill(255,0,0);
+  box(sphereSize/2, sphereSize/2, sphereSize/2); 
+  translate(0, 0, -10);
+  fill(99, 99, 99);
+}
+
+//------------------------------------------------------------------------------------------ 
+// match the range and position of bodyparts to inputvalues of the arduino
+//------------------------------------------------------------------------------------------ 
+Float conval(Float rawvalue, String bodyPart)
+{
+  float bodyRange=settings.get(bodyPart+"_hwRange");
+  float offset=settings.get(bodyPart+"_hwOff");
+  float minvalue=settings.get(bodyPart+"_hwMin");
+  float maxvalue=settings.get(bodyPart+"_hwMax");
+
+  float adcRange = 4096;
+  try{
+    adcRange = maxvalue - minvalue;
+  }catch(Exception e){
+    println("--------------- Could not calculate hwRange "+ maxvalue +" - "+minvalue);
+  }
+  rawvalue = offset + (bodyRange * ((rawvalue - minvalue) / adcRange));
+  return rawvalue;
+}
+
+//------------------------------------------------------------------------------------------ 
+// draw the screen
+//------------------------------------------------------------------------------------------ 
+void draw()
+{ 
+  background(0);
+    
+  // Tweak the view of the rectangles
+  int distance = 50;
+  int x_rotation = 90;
+  
+  ///TEXT OUTPUT
+  textSize(24);
+  String accStr = "(" + (int) x_acc + ", " + (int) y_acc + ")";
+  String gyrStr = "(" + (int) x_gyr + ", " + (int) y_gyr + ")";
+  String filStr = "(" + (int) x_fil + ", " + (int) y_fil + ")";
+
+  fill(249, 250, 50);
+  text("Gyroscope", (int) width/6.0 - 60, 25);
+  text(gyrStr, (int) (width/6.0) - 40, 50);
+
+  fill(56, 140, 206);
+  text("stepsize", (int) width/2.0 - 50, 25);
+  text(stepsize, (int) (width/2.0) - 30, 50); 
+  //text(accStr, (int) (width/2.0) - 30, 50); 
+  
+  fill(83, 175, 93);
+  text("Combination", (int) (5.0*width/6.0) - 40, 25);
+  text(filStr, (int) (5.0*width/6.0) - 20, 50);
+
+  int colwidth=150;
+  int x_col0=400;
+  int x_col1=x_col0+colwidth/3;
+  int x_col2=x_col1+colwidth;
+  int x_col3=x_col2+colwidth/3;
+  int x_col4=x_col3+colwidth;
+  int x_col5=x_col4+colwidth/3;
+  int x_col6=x_col5+colwidth;
+  int x_col7=x_col6+colwidth/3;
+  int y_cursor=15;
+  int lineheight=3;
+
+  fill(99, 99, 99);
+
+  text("A0: ", x_col0, (height/100)*y_cursor);
+  text(adc_A0, x_col1, (height/100)*y_cursor);
+  text("B0: ", x_col2, (height/100)*y_cursor);
+  text(adc_B0, x_col3, (height/100)*y_cursor);
+  text("C0: ", x_col4, (height/100)*y_cursor);
+  text(adc_C0, x_col5, (height/100)*y_cursor);
+  text("D0: ", x_col6, (height/100)*y_cursor);
+  text(adc_D0, x_col7, (height/100)*y_cursor);
+  y_cursor+=lineheight;
+  text("A1: ", x_col0, (height/100)*y_cursor);
+  text(adc_A1, x_col1, (height/100)*y_cursor);
+  text("B1: ", x_col2, (height/100)*y_cursor);
+  text(adc_B1, x_col3, (height/100)*y_cursor);
+  text("C1: ", x_col4, (height/100)*y_cursor);
+  text(adc_C1, x_col5, (height/100)*y_cursor);
+  text("D1: ", x_col6, (height/100)*y_cursor);
+  text(adc_D1, x_col7, (height/100)*y_cursor);
+  y_cursor+=lineheight;
+  text("A2: ", x_col0, (height/100)*y_cursor);
+  text(adc_A2, x_col1, (height/100)*y_cursor);
+  text("B2: ", x_col2, (height/100)*y_cursor);
+  text(adc_B2, x_col3, (height/100)*y_cursor);
+  text("C2: ", x_col4, (height/100)*y_cursor);
+  text(adc_C2, x_col5, (height/100)*y_cursor);
+  text("D2: ", x_col6, (height/100)*y_cursor);
+  text(adc_D2, x_col7, (height/100)*y_cursor);
+  y_cursor+=lineheight;
+  text("A3: ", x_col0, (height/100)*y_cursor);
+  text(adc_A3, x_col1, (height/100)*y_cursor);
+  text("B3: ", x_col2, (height/100)*y_cursor);
+  text(adc_B3, x_col3, (height/100)*y_cursor);
+  text("C3: ", x_col4, (height/100)*y_cursor);
+  text(adc_C3, x_col5, (height/100)*y_cursor);
+  text("D3: ", x_col6, (height/100)*y_cursor);
+  text(adc_D3, x_col7, (height/100)*y_cursor);
+  y_cursor+=lineheight;
+  text("A4: ", x_col0, (height/100)*y_cursor);
+  text(adc_A4, x_col1, (height/100)*y_cursor);
+  text("B4: ", x_col2, (height/100)*y_cursor);
+  text(adc_B4, x_col3, (height/100)*y_cursor);
+  text("C4: ", x_col4, (height/100)*y_cursor);
+  text(adc_C4, x_col5, (height/100)*y_cursor);
+  text("D4: ", x_col6, (height/100)*y_cursor);
+  text(adc_D4, x_col7, (height/100)*y_cursor);
+  y_cursor+=lineheight;
+  text("A5: ", x_col0, (height/100)*y_cursor);
+  text(adc_A5, x_col1, (height/100)*y_cursor);
+  text("B5: ", x_col2, (height/100)*y_cursor);
+  text(adc_B5, x_col3, (height/100)*y_cursor);
+  text("C5: ", x_col4, (height/100)*y_cursor);
+  text(adc_C5, x_col5, (height/100)*y_cursor);
+  text("D5: ", x_col6, (height/100)*y_cursor);
+  text(adc_D5, x_col7, (height/100)*y_cursor);
+  y_cursor+=lineheight;
+  text("A6: ", x_col0, (height/100)*y_cursor);
+  text(adc_A6, x_col1, (height/100)*y_cursor);
+  text("B6: ", x_col2, (height/100)*y_cursor);
+  text(adc_B6, x_col3, (height/100)*y_cursor);
+  text("C6: ", x_col4, (height/100)*y_cursor);
+  text(adc_C6, x_col5, (height/100)*y_cursor);
+  text("D6: ", x_col6, (height/100)*y_cursor);
+  text(adc_D6, x_col7, (height/100)*y_cursor);
+  y_cursor+=lineheight;
+  text("A7: ", x_col0, (height/100)*y_cursor);
+  text(adc_A7, x_col1, (height/100)*y_cursor);
+  text("B7: ", x_col2, (height/100)*y_cursor);
+  text(adc_B7, x_col3, (height/100)*y_cursor);
+  text("C7: ", x_col4, (height/100)*y_cursor);
+  text(adc_C7, x_col5, (height/100)*y_cursor);
+  text("D7: ", x_col6, (height/100)*y_cursor);
+  text(adc_D7, x_col7, (height/100)*y_cursor);
+  y_cursor+=lineheight;
+  y_cursor+=lineheight;
+  text("forearmR_Y: ", x_col5, (height/100)*y_cursor);
+  text(settings.get("forearmR_Y"), x_col7, (height/100)*y_cursor);
+  y_cursor+=lineheight;
+  text("forearmL_Y: ", x_col5, (height/100)*y_cursor);
+  text(settings.get("forearmL_Y"), x_col7, (height/100)*y_cursor);
+
+  renderBody();
+}
+
+//------------------------------------------------------------------------------------------ 
+// render the body to the screen
+//------------------------------------------------------------------------------------------ 
+void renderBody()
+{
 
   float sphereSize=10;
   
@@ -563,9 +582,9 @@ void renderBody(){
   stroke(255);
 }
 
-
-
+//------------------------------------------------------------------------------------------ 
 //This is for numbers not bouncing around in screen position if a digit is added or substracted
+//------------------------------------------------------------------------------------------ 
 /*String stillnum(float num){
   String numstring;
     num= num*100;
