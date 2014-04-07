@@ -1,5 +1,5 @@
-ViRIS shirt
-===========
+ViRIS (Virtual Reality Immersion Suit) - shirt
+==============================================
 
 This is software for my arduino project.
 The idea is to have a motion capture device which
@@ -16,10 +16,12 @@ Current Hardware setup
 All motions of the bodyparts will be measured by the axis sensors relative to the MPUs position.
 
 
-Arduinosketch 
-=============
+Arduino sketch 
+==============
 
 The sketch uses the data from the MCPs and the MPU and passes it through the serial port (USB) of the arduino.
+You will need to import this Library for the MCP3208:
+http://arduino.alhin.de/download.php?id=10
 
 
 Testprogram Processing
