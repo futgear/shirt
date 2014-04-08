@@ -1,11 +1,10 @@
-// VRPN Server tutorial
-// by Sebastien Kuntz, for the VR Geeks (http://www.vrgeeks.org)
-// August 2011
+// VRPN Server for sevengearSuit powered by Arduino
+// by Sven Schmid
+// April 2014
 
 #include <stdio.h>
 #include <tchar.h>
 #include <string.h>
-
 
 #include <math.h>
 
@@ -21,7 +20,7 @@
 #include <iostream>
 using namespace std;
 
-#define VERBOSE (false)
+#undef VERBOSE
 // Defines the modes in which the device can find itself.
 #define	STATUS_RESETTING	(-1)	// Resetting the device
 #define	STATUS_SYNCING		(0)	// Looking for the first character of report
@@ -35,21 +34,22 @@ class sevengearSuit : public vrpn_Serial_Analog
 {
 public:
 	sevengearSuit(vrpn_Connection *c,
-		const char * port, int baud = 38400);
+		const char * port,
+		int baud = 38400);
 	virtual ~sevengearSuit() {};
 
 	virtual void mainloop();
 
 protected:
 	struct timeval _timestamp;
-	int _status;		    //< Reset, Syncing, or Reading
-	int _numchannels;	    //< How many analog channels to open
+	int _status;					//< Reset, Syncing, or Reading
+	int _numchannels;				//< How many analog channels to open
 
 	unsigned _expected_chars;	    //< How many characters to expect in the report
-	unsigned char _buffer[512]; //< Buffer of characters in report
-	unsigned _bufcount;		    //< How many characters we have so far
+	unsigned char _buffer[256];		//< Buffer of characters in report
+	unsigned _bufcount;				//< How many characters we have so far
 
-	struct timeval timestamp;   //< Time of the last report from the device
+	struct timeval timestamp;		//< Time of the last report from the device
 
 	virtual int reset(void);		//< Set device back to starting config
 	virtual	int get_report(void);		//< Try to read a report from the device
@@ -68,19 +68,15 @@ protected:
 };
 
 
-
 sevengearSuit::sevengearSuit(vrpn_Connection * c,
 	const char * port, int baud) :
-	vrpn_Serial_Analog("7GS", c, port, baud, 8, vrpn_SER_PARITY_ODD),
+	vrpn_Serial_Analog("7GS", c, port, baud, 8, vrpn_SER_PARITY_NONE),
 	_numchannels(4)
 {
 	vrpn_Analog::num_channel = _numchannels;
 	// Set the mode to reset
 	_status = STATUS_RESETTING;
 }
-
-
-
 
 
 /** Convert a 24-bit value from a buffer into an unsigned integer value.
@@ -115,7 +111,7 @@ vrpn_int32 sevengearSuit::convert_16bit_unsigned(const unsigned char *buf)
 	unsigned char bigend_buf[4];
 	const unsigned char *bufptr = bigend_buf;
 
-	// Store the three values into two bytes of a big-endian 32-bit integer
+	// Store the values into two bytes of a big-endian 32-bit integer
 	bigend_buf[0] = 0;
 	bigend_buf[1] = 0;
 	bigend_buf[2] = buf[0];
@@ -181,12 +177,12 @@ int sevengearSuit::get_report(void)
 		}
 
 		switch (_buffer[0]) {
-		case 0xa0:
-			_expected_chars = 19; status = STATUS_READING; break;
+			case 0xa0:
+				_expected_chars = 85; status = STATUS_READING; break;
 
-		default:
-			// Not a recognized command, keep looking
-			return 0;
+			default:
+				// Not a recognized command, keep looking
+				return 0;
 		}
 
 
@@ -199,7 +195,7 @@ int sevengearSuit::get_report(void)
 		vrpn_gettimeofday(&timestamp, NULL);
 		status = STATUS_READING;
 #ifdef	VERBOSE
-		printf("... Got the 1st char\n");
+		printf("... Got the 1st char: %d \n", _buffer[0]);
 #endif
 	}
 
@@ -231,33 +227,68 @@ int sevengearSuit::get_report(void)
 	//--------------------------------------------------------------------
 	// Decode the report and store the values in it into the analog values
 	// if appropriate.
+	//	#TEMP
+	//	#DEL
+	//	#ACC_x, ACC_y, ACC_z
+	//	#GYRO_x, GYRO_y, GYRO_z
+	//	#FILTERED_x, FILTERED_y, FILTERED_z
+	//	#ADC0, ..., ADC31
 	//--------------------------------------------------------------------
-
 	switch (_buffer[0]) {
 	case 0xa0:	// Shirt only
-		_numchannels = 18;
-		//root hip
-		channel[0] = convert_24bit_unsigned(&_buffer[1]);
-		channel[1] = convert_24bit_unsigned(&_buffer[2]);
-		channel[2] = convert_24bit_unsigned(&_buffer[3]);
-		channel[3] = convert_24bit_unsigned(&_buffer[4]);
-		//left arm
-		channel[4] = convert_24bit_unsigned(&_buffer[5]);
-		channel[5] = convert_24bit_unsigned(&_buffer[6]);
-		channel[6] = convert_24bit_unsigned(&_buffer[7]);
-		channel[7] = convert_24bit_unsigned(&_buffer[8]);
-		channel[8] = convert_24bit_unsigned(&_buffer[9]);
-		//right arm
-		channel[9] = convert_24bit_unsigned(&_buffer[10]);
-		channel[10] = convert_24bit_unsigned(&_buffer[11]);
-		channel[11] = convert_24bit_unsigned(&_buffer[12]);
-		channel[12] = convert_24bit_unsigned(&_buffer[13]);
-		channel[13] = convert_24bit_unsigned(&_buffer[14]);
-		//torso
-		channel[14] = convert_24bit_unsigned(&_buffer[15]);
-		channel[15] = convert_24bit_unsigned(&_buffer[16]);
-		channel[16] = convert_24bit_unsigned(&_buffer[17]);
-		channel[17] = convert_24bit_unsigned(&_buffer[18]);
+		vrpn_Analog::num_channel = 43;
+		// TEMP
+		channel[0] = convert_16bit_unsigned(&_buffer[1]);
+		// DEL
+		channel[1] = convert_16bit_unsigned(&_buffer[3]);
+		// ACCELERATOR
+		channel[2] = convert_16bit_unsigned(&_buffer[5]);
+		channel[3] = convert_16bit_unsigned(&_buffer[7]);
+		channel[4] = convert_16bit_unsigned(&_buffer[9]);
+		// GYRO
+		channel[5] = convert_16bit_unsigned(&_buffer[11]);
+		channel[6] = convert_16bit_unsigned(&_buffer[13]);
+		channel[7] = convert_16bit_unsigned(&_buffer[15]);
+		// FILTERED
+		channel[8] = convert_16bit_unsigned(&_buffer[17]);
+		channel[9] = convert_16bit_unsigned(&_buffer[19]);
+		channel[10] = convert_16bit_unsigned(&_buffer[21]);
+		// ADCs
+		channel[11] = convert_16bit_unsigned(&_buffer[23]); // A0
+		channel[12] = convert_16bit_unsigned(&_buffer[25]); // A1
+		channel[13] = convert_16bit_unsigned(&_buffer[27]); // A2
+		channel[14] = convert_16bit_unsigned(&_buffer[29]); // A3
+		channel[15] = convert_16bit_unsigned(&_buffer[31]); // A4
+		channel[16] = convert_16bit_unsigned(&_buffer[33]); // A5
+		channel[17] = convert_16bit_unsigned(&_buffer[35]); // A6
+		channel[18] = convert_16bit_unsigned(&_buffer[37]); // A7
+
+		channel[19] = convert_16bit_unsigned(&_buffer[39]); // B0
+		channel[20] = convert_16bit_unsigned(&_buffer[41]); // B1
+		channel[21] = convert_16bit_unsigned(&_buffer[43]); // B2
+		channel[22] = convert_16bit_unsigned(&_buffer[45]); // B3
+		channel[23] = convert_16bit_unsigned(&_buffer[47]); // B4
+		channel[24] = convert_16bit_unsigned(&_buffer[49]); // B5
+		channel[25] = convert_16bit_unsigned(&_buffer[51]); // B6
+		channel[26] = convert_16bit_unsigned(&_buffer[53]); // B7
+
+		channel[27] = convert_16bit_unsigned(&_buffer[55]); // C0
+		channel[28] = convert_16bit_unsigned(&_buffer[57]); // C1
+		channel[29] = convert_16bit_unsigned(&_buffer[59]); // C2
+		channel[30] = convert_16bit_unsigned(&_buffer[61]); // C3
+		channel[31] = convert_16bit_unsigned(&_buffer[63]); // C4
+		channel[32] = convert_16bit_unsigned(&_buffer[65]); // C5
+		channel[33] = convert_16bit_unsigned(&_buffer[67]); // C6
+		channel[34] = convert_16bit_unsigned(&_buffer[69]); // C7
+
+		channel[35] = convert_16bit_unsigned(&_buffer[71]); // D0
+		channel[36] = convert_16bit_unsigned(&_buffer[73]); // D1
+		channel[37] = convert_16bit_unsigned(&_buffer[75]); // D2
+		channel[38] = convert_16bit_unsigned(&_buffer[77]); // D3
+		channel[39] = convert_16bit_unsigned(&_buffer[79]); // D4
+		channel[40] = convert_16bit_unsigned(&_buffer[81]); // D5
+		channel[41] = convert_16bit_unsigned(&_buffer[83]); // D6
+		channel[42] = convert_16bit_unsigned(&_buffer[85]); // D7
 		break;
 
 	default:

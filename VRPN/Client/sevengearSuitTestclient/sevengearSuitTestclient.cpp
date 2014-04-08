@@ -7,11 +7,11 @@ void VRPN_CALLBACK handle_analog( void* userData, const vrpn_ANALOGCB a )
 {
 	int nbChannels = a.num_channel;
 
-	cout << "SevenGear Suit : ";
+	cout << "7GS:";
 
 	for( int i=0; i < a.num_channel; i++ )
 	{
-		cout << i << ": " << a.channel[i] << " ";
+		cout << a.channel[i] << ",";
 	}
 
 	cout << endl;

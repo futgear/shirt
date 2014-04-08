@@ -705,7 +705,7 @@ void setup()
   uint8_t c;
 
 
-  Serial.begin(115200);
+  Serial.begin(38400);
 
   // Initialize the 'Wire' class for the I2C-bus.
   Wire.begin();
@@ -752,11 +752,6 @@ void loop()
   int error;
   double dT;
   accel_t_gyro_union accel_t_gyro;
-
-  /*
-  Serial.println(F(""));
-  Serial.println(F("MPU-6050"));
-  */
   
   // Read the raw values.
   error = read_gyro_accel_vals((uint8_t*) &accel_t_gyro);
@@ -764,39 +759,11 @@ void loop()
   // Get the time of reading for rotation computations
   unsigned long t_now = millis();
    
-  /*
-  Serial.print(F("Read accel, temp and gyro, error = "));
-  Serial.println(error,DEC);
-  
-
-  // Print the raw acceleration values
-  Serial.print(F("accel x,y,z: "));
-  Serial.print(accel_t_gyro.value.x_accel, DEC);
-  Serial.print(F(", "));
-  Serial.print(accel_t_gyro.value.y_accel, DEC);
-  Serial.print(F(", "));
-  Serial.print(accel_t_gyro.value.z_accel, DEC);
-  Serial.println(F(""));
-  */ 
-
-  /*  
-  // Print the raw gyro values.
-  Serial.print(F("raw gyro x,y,z : "));
-  Serial.print(accel_t_gyro.value.x_gyro, DEC);
-  Serial.print(F(", "));
-  Serial.print(accel_t_gyro.value.y_gyro, DEC);
-  Serial.print(F(", "));
-  Serial.print(accel_t_gyro.value.z_gyro, DEC);
-  Serial.print(F(", "));
-  Serial.println(F(""));
-  */
-
   // Convert gyro values to degrees/sec
   float FS_SEL = 131;
   float gyro_x = (accel_t_gyro.value.x_gyro - base_x_gyro)/FS_SEL;
   float gyro_y = (accel_t_gyro.value.y_gyro - base_y_gyro)/FS_SEL;
   float gyro_z = (accel_t_gyro.value.z_gyro - base_z_gyro)/FS_SEL;
-  
   
   // Get raw acceleration values
   //float G_CONVERT = 16384;
@@ -838,72 +805,74 @@ void loop()
   // At 0 degrees: -512 - (340 * 35) = -12412
   dT = ( (double) accel_t_gyro.value.temperature + 12412.0) / 340.0;  
 
-  // Send the data to the serial port
-  Serial.print(F("TMP:"));                      //Temperature
-  Serial.print(dT, 3);
-  Serial.print(F("#DEL:"));                      //Delta T
-  Serial.print(dt, DEC);
-  Serial.print(F("#ACC:"));                     //Accelerometer angle
-  Serial.print(accel_angle_x, 2);
-  Serial.print(F(","));
-  Serial.print(accel_angle_y, 2);
-  Serial.print(F(","));
-  Serial.print(accel_angle_z, 2);
-  Serial.print(F("#GYR:"));
-  Serial.print(unfiltered_gyro_angle_x, 2);     //Gyroscope angle
-  Serial.print(F(","));
-  Serial.print(unfiltered_gyro_angle_y, 2);
-  Serial.print(F(","));
-  Serial.print(unfiltered_gyro_angle_z, 2);
-  Serial.print(F("#FIL:"));                     //Filtered angle
-  Serial.print(angle_x, 2);
-  Serial.print(F(","));
-  Serial.print(angle_y, 2);
-  Serial.print(F(","));
-  Serial.print(angle_z, 2);
-  Serial.print(F(""));
- 
-  //This is the Analog Reader part  
-  Serial.print(F("#ADC:"));             //Analog inputs of the MCPs
-  
   ADC_A_SPI.readALL(ADC_A_Values,8);    //read all 8 channels (SPI mode)
   ADC_B_SPI.readALL(ADC_B_Values,8);    //read all 8 channels (SPI mode)
   ADC_C_SPI.readALL(ADC_C_Values,8);    //read all 8 channels (SPI mode)
   ADC_D_SPI.readALL(ADC_D_Values,8);    //read all 8 channels (SPI mode)
+  
+  // Send the data to the serial port
+  Serial.write(0xa0);
  
+  serial_writeBytes(int2bytes((uint16_t)dT));                                // Temparatur
+  serial_writeBytes(int2bytes((uint16_t)dt));                                // Time delta
+  serial_writeBytes(int2bytes((uint16_t)accel_angle_x + 128));               // Accelerator angles
+  serial_writeBytes(int2bytes((uint16_t)accel_angle_y + 128));
+  serial_writeBytes(int2bytes((uint16_t)accel_angle_z + 128));
+  serial_writeBytes(int2bytes((uint16_t)unfiltered_gyro_angle_x + 128));     // Gyroscope angles
+  serial_writeBytes(int2bytes((uint16_t)unfiltered_gyro_angle_y + 128));
+  serial_writeBytes(int2bytes((uint16_t)unfiltered_gyro_angle_z + 128));
+  serial_writeBytes(int2bytes((uint16_t)angle_x + 128));                     // Filtered angles
+  serial_writeBytes(int2bytes((uint16_t)angle_y + 128));
+  serial_writeBytes(int2bytes((uint16_t)angle_z + 128));
+
+  //This is the Analog Reader part  
   //CHIP A  
   for (int i=0;i<8;i++)
   {
-    Serial.print(ADC_A_Values[i]);    
-    Serial.print(",");         
+    serial_writeBytes(int2bytes(ADC_A_Values[i]));
   }
-
   //CHIP B  
   for (int i=0;i<8;i++)
   {
-    Serial.print(ADC_B_Values[i]);    
-    Serial.print(",");         
+    serial_writeBytes(int2bytes(ADC_B_Values[i]));    
   }
-
+  
   //CHIP C  
   for (int i=0;i<8;i++)
   {
-    Serial.print(ADC_C_Values[i]);    
-    Serial.print(",");         
+    serial_writeBytes(int2bytes(ADC_C_Values[i]));    
   }
 
   //CHIP D  
   for (int i=0;i<8;i++)
   {
-    Serial.print(ADC_D_Values[i]);    
-    Serial.print(",");         
+    serial_writeBytes(int2bytes(ADC_D_Values[i]));    
   }
   Serial.println();
-  
+ 
+ 
   
   // Delay so we don't swamp the serial port
   delay(15);
 }
+
+
+void serial_writeBytes(char *byteArray){
+  for(int i=0; i<sizeof(byteArray); i++){
+    Serial.write(byteArray[i]);    
+  }
+}
+
+char *int2bytes(uint16_t integer)
+{
+  char bytes[2];
+  char high = (integer >> 8) & 0xFF;
+  char low  = integer & 0xFF;
+  bytes[0] = high;
+  bytes[1] = low;
+  return bytes;
+}
+
 
 void set_last_read_angle_data(unsigned long time, float x, float y, float z, float x_gyro, float y_gyro, float z_gyro)
 {
