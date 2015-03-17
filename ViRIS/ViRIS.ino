@@ -687,6 +687,11 @@ float    base_x_gyro;
 float    base_y_gyro;
 float    base_z_gyro;
 
+int RIGHTARM = 17;
+int LEFTARM = 2;
+int RIGHTHAND = 3;
+int LEFTHAND = 4;
+
 //MCP320x ADC Chips Configuration
 //int ADCValue = 0;
 int ADC_A_Values[8];                //definition of Array for measured values
@@ -694,37 +699,34 @@ int ADC_B_Values[8];                //definition of Array for measured values
 int ADC_C_Values[8];                //definition of Array for measured values
 int ADC_D_Values[8];                //definition of Array for measured values
 
-AH_MCP320x ADC_A_SPI(10);            //D8 as CS, other pins are defined by spi interface (faster mode).
-AH_MCP320x ADC_B_SPI(9);             //D7 as CS, other pins are defined by spi interface (faster mode).
-AH_MCP320x ADC_C_SPI(8);             //D6 as CS, other pins are defined by spi interface (faster mode).
-AH_MCP320x ADC_D_SPI(7);             //D5 as CS, other pins are defined by spi interface (faster mode).
+boolean bytestream = false;
+
+AH_MCP320x ADC_A_SPI(RIGHTARM);     
+AH_MCP320x ADC_B_SPI(LEFTARM);      
+AH_MCP320x ADC_C_SPI(RIGHTHAND);
+AH_MCP320x ADC_D_SPI(LEFTHAND);
+
+
+// MPU6050 default at power-up:
+//    Gyro at 250 degrees second
+//    Acceleration at 2g
+//    Clock source at internal 8MHz
+//    The device is in sleep mode.
+//
 
 void setup()
 {
+  Serial.begin(57600);
+
+  /*
   int error;
   uint8_t c;
-
-
-  Serial.begin(115200);
 
   // Initialize the 'Wire' class for the I2C-bus.
   Wire.begin();
 
-
-  // default at power-up:
-  //    Gyro at 250 degrees second
-  //    Acceleration at 2g
-  //    Clock source at internal 8MHz
-  //    The device is in sleep mode.
-  //
-
   error = MPU6050_read (MPU6050_WHO_AM_I, &c, 1);
-  /*
-  Serial.print(F("WHO_AM_I : "));
-  Serial.print(c,HEX);
-  Serial.print(F(", error = "));
-  Serial.println(error,DEC);
-  */
+  //printID(error,c);
 
   // According to the datasheet, the 'sleep' bit
   // should read a '1'. But I read a '0'.
@@ -732,12 +734,7 @@ void setup()
   // is in sleep mode at power-up. Even if the
   // bit reads '0'.
   error = MPU6050_read (MPU6050_PWR_MGMT_2, &c, 1);
-  /*
-  Serial.print(F("PWR_MGMT_2 : "));
-  Serial.print(c,HEX);
-  Serial.print(F(", error = "));
-  Serial.println(error,DEC);
-  */
+  //printPower(error,c);
 
   // Clear the 'sleep' bit to start the sensor.
   MPU6050_write_reg (MPU6050_PWR_MGMT_1, 0);
@@ -745,165 +742,174 @@ void setup()
   //Initialize the angles
   calibrate_sensors();  
   set_last_read_angle_data(millis(), 0, 0, 0, 0, 0, 0);
+  */
 }
 
 void loop()
 {
   int error;
   double dT;
-  accel_t_gyro_union accel_t_gyro;
+  boolean mpuConnected = false;
+  boolean glovesConnected = false;
 
-  /*
-  Serial.println(F(""));
-  Serial.println(F("MPU-6050"));
-  */
+  if(mpuConnected){
   
-  // Read the raw values.
-  error = read_gyro_accel_vals((uint8_t*) &accel_t_gyro);
-  
-  // Get the time of reading for rotation computations
-  unsigned long t_now = millis();
-   
-  /*
-  Serial.print(F("Read accel, temp and gyro, error = "));
-  Serial.println(error,DEC);
-  
-
-  // Print the raw acceleration values
-  Serial.print(F("accel x,y,z: "));
-  Serial.print(accel_t_gyro.value.x_accel, DEC);
-  Serial.print(F(", "));
-  Serial.print(accel_t_gyro.value.y_accel, DEC);
-  Serial.print(F(", "));
-  Serial.print(accel_t_gyro.value.z_accel, DEC);
-  Serial.println(F(""));
-  */ 
-
-  /*  
-  // Print the raw gyro values.
-  Serial.print(F("raw gyro x,y,z : "));
-  Serial.print(accel_t_gyro.value.x_gyro, DEC);
-  Serial.print(F(", "));
-  Serial.print(accel_t_gyro.value.y_gyro, DEC);
-  Serial.print(F(", "));
-  Serial.print(accel_t_gyro.value.z_gyro, DEC);
-  Serial.print(F(", "));
-  Serial.println(F(""));
-  */
-
-  // Convert gyro values to degrees/sec
-  float FS_SEL = 131;
-  float gyro_x = (accel_t_gyro.value.x_gyro - base_x_gyro)/FS_SEL;
-  float gyro_y = (accel_t_gyro.value.y_gyro - base_y_gyro)/FS_SEL;
-  float gyro_z = (accel_t_gyro.value.z_gyro - base_z_gyro)/FS_SEL;
-  
-  
-  // Get raw acceleration values
-  //float G_CONVERT = 16384;
-  float accel_x = accel_t_gyro.value.x_accel;
-  float accel_y = accel_t_gyro.value.y_accel;
-  float accel_z = accel_t_gyro.value.z_accel;
-  
-  // Get angle values from accelerometer
-  float RADIANS_TO_DEGREES = 180/3.14159;
-  // float accel_vector_length = sqrt(pow(accel_x,2) + pow(accel_y,2) + pow(accel_z,2));
-  float accel_angle_y = atan(-1*accel_x/sqrt(pow(accel_y,2) + pow(accel_z,2)))*RADIANS_TO_DEGREES;
-  float accel_angle_x = atan(accel_y/sqrt(pow(accel_x,2) + pow(accel_z,2)))*RADIANS_TO_DEGREES;
-
-  float accel_angle_z = 0;
-  
-  // Compute the (filtered) gyro angles
-  float dt =(t_now - get_last_time())/1000.0;
-  float gyro_angle_x = gyro_x*dt + get_last_x_angle();
-  float gyro_angle_y = gyro_y*dt + get_last_y_angle();
-  float gyro_angle_z = gyro_z*dt + get_last_z_angle();
-  
-  // Compute the drifting gyro angles
-  float unfiltered_gyro_angle_x = gyro_x*dt + get_last_gyro_x_angle();
-  float unfiltered_gyro_angle_y = gyro_y*dt + get_last_gyro_y_angle();
-  float unfiltered_gyro_angle_z = gyro_z*dt + get_last_gyro_z_angle();
-  
-  // Apply the complementary filter to figure out the change in angle - choice of alpha is
-  // estimated now.  Alpha depends on the sampling rate...
-  float alpha = 0.96;
-  float angle_x = alpha*gyro_angle_x + (1.0 - alpha)*accel_angle_x;
-  float angle_y = alpha*gyro_angle_y + (1.0 - alpha)*accel_angle_y;
-  float angle_z = gyro_angle_z;  //Accelerometer doesn't give z-angle
-  
-  // Update the saved data with the latest values
-  set_last_read_angle_data(t_now, angle_x, angle_y, angle_z, unfiltered_gyro_angle_x, unfiltered_gyro_angle_y, unfiltered_gyro_angle_z);
-  
-  // The temperature sensor is -40 to +85 degrees Celsius.
-  // 340 per degrees Celsius, -512 at 35 degrees.
-  // At 0 degrees: -512 - (340 * 35) = -12412
-  dT = ( (double) accel_t_gyro.value.temperature + 12412.0) / 340.0;  
-
-  // Send the data to the serial port
-  Serial.print(F("TMP:"));                      //Temperature
-  Serial.print(dT, 3);
-  Serial.print(F("#DEL:"));                      //Delta T
-  Serial.print(dt, DEC);
-  Serial.print(F("#ACC:"));                     //Accelerometer angle
-  Serial.print(accel_angle_x, 2);
-  Serial.print(F(","));
-  Serial.print(accel_angle_y, 2);
-  Serial.print(F(","));
-  Serial.print(accel_angle_z, 2);
-  Serial.print(F("#GYR:"));
-  Serial.print(unfiltered_gyro_angle_x, 2);     //Gyroscope angle
-  Serial.print(F(","));
-  Serial.print(unfiltered_gyro_angle_y, 2);
-  Serial.print(F(","));
-  Serial.print(unfiltered_gyro_angle_z, 2);
-  Serial.print(F("#FIL:"));                     //Filtered angle
-  Serial.print(angle_x, 2);
-  Serial.print(F(","));
-  Serial.print(angle_y, 2);
-  Serial.print(F(","));
-  Serial.print(angle_z, 2);
-  Serial.print(F(""));
- 
-  //This is the Analog Reader part  
-  Serial.print(F("#ADC:"));             //Analog inputs of the MCPs
+    accel_t_gyro_union accel_t_gyro;
+    
+    // Read the raw values.
+    error = read_gyro_accel_vals((uint8_t*) &accel_t_gyro);
+    
+    // Get the time of reading for rotation computations
+    unsigned long t_now = millis();
+     
+    // Convert gyro values to degrees/sec
+    float FS_SEL = 131;
+    float gyro_x = (accel_t_gyro.value.x_gyro - base_x_gyro)/FS_SEL;
+    float gyro_y = (accel_t_gyro.value.y_gyro - base_y_gyro)/FS_SEL;
+    float gyro_z = (accel_t_gyro.value.z_gyro - base_z_gyro)/FS_SEL;
+    
+    // Get raw acceleration values
+    //float G_CONVERT = 16384;
+    float accel_x = accel_t_gyro.value.x_accel;
+    float accel_y = accel_t_gyro.value.y_accel;
+    float accel_z = accel_t_gyro.value.z_accel;
+    
+    // Get angle values from accelerometer
+    float RADIANS_TO_DEGREES = 180/3.14159;
+    // float accel_vector_length = sqrt(pow(accel_x,2) + pow(accel_y,2) + pow(accel_z,2));
+    float accel_angle_y = atan(-1*accel_x/sqrt(pow(accel_y,2) + pow(accel_z,2)))*RADIANS_TO_DEGREES;
+    float accel_angle_x = atan(accel_y/sqrt(pow(accel_x,2) + pow(accel_z,2)))*RADIANS_TO_DEGREES;
+    float accel_angle_z = 0;
+    
+    // Compute the (filtered) gyro angles
+    float dt =(t_now - get_last_time())/1000.0;
+    float gyro_angle_x = gyro_x*dt + get_last_x_angle();
+    float gyro_angle_y = gyro_y*dt + get_last_y_angle();
+    float gyro_angle_z = gyro_z*dt + get_last_z_angle();
+    
+    // Compute the drifting gyro angles
+    float unfiltered_gyro_angle_x = gyro_x*dt + get_last_gyro_x_angle();
+    float unfiltered_gyro_angle_y = gyro_y*dt + get_last_gyro_y_angle();
+    float unfiltered_gyro_angle_z = gyro_z*dt + get_last_gyro_z_angle();
+    
+    // Apply the complementary filter to figure out the change in angle - choice of alpha is
+    // estimated now.  Alpha depends on the sampling rate...
+    float alpha = 0.96;
+    float angle_x = alpha*gyro_angle_x + (1.0 - alpha)*accel_angle_x;
+    float angle_y = alpha*gyro_angle_y + (1.0 - alpha)*accel_angle_y;
+    float angle_z = gyro_angle_z;  //Accelerometer doesn't give z-angle
+    
+    // Update the saved data with the latest values
+    set_last_read_angle_data(t_now, angle_x, angle_y, angle_z, unfiltered_gyro_angle_x, unfiltered_gyro_angle_y, unfiltered_gyro_angle_z);
+    
+    // The temperature sensor is -40 to +85 degrees Celsius.
+    // 340 per degrees Celsius, -512 at 35 degrees.
+    // At 0 degrees: -512 - (340 * 35) = -12412
+    dT = ( (double) accel_t_gyro.value.temperature + 12412.0) / 340.0;  
+    
+    serial_writeBytes((uint16_t)dT);                                // Temparatur
+    serial_writeBytes((uint16_t)dt);                                // Time delta
+    serial_writeBytes((uint16_t)accel_angle_x + 128);               // Accelerator angles
+    serial_writeBytes((uint16_t)accel_angle_y + 128);
+    serial_writeBytes((uint16_t)accel_angle_z + 128);
+    serial_writeBytes((uint16_t)unfiltered_gyro_angle_x + 128);     // Gyroscope angles
+    serial_writeBytes((uint16_t)unfiltered_gyro_angle_y + 128);
+    serial_writeBytes((uint16_t)unfiltered_gyro_angle_z + 128);
+    serial_writeBytes((uint16_t)angle_x + 128);                     // Filtered angles
+    serial_writeBytes((uint16_t)angle_y + 128);
+    serial_writeBytes((uint16_t)angle_z + 128);
+  }else{
+    serial_writeBytes(0);    
+    serial_writeBytes(0);    
+    serial_writeBytes(0);    
+    serial_writeBytes(0);    
+    serial_writeBytes(0);    
+    serial_writeBytes(0);    
+    serial_writeBytes(0);    
+    serial_writeBytes(0);    
+    serial_writeBytes(0);    
+    serial_writeBytes(0);    
+    serial_writeBytes(0);    
+  }
   
   ADC_A_SPI.readALL(ADC_A_Values,8);    //read all 8 channels (SPI mode)
   ADC_B_SPI.readALL(ADC_B_Values,8);    //read all 8 channels (SPI mode)
-  ADC_C_SPI.readALL(ADC_C_Values,8);    //read all 8 channels (SPI mode)
-  ADC_D_SPI.readALL(ADC_D_Values,8);    //read all 8 channels (SPI mode)
- 
+  if(glovesConnected){
+    ADC_C_SPI.readALL(ADC_C_Values,8);    //read all 8 channels (SPI mode)
+    ADC_D_SPI.readALL(ADC_D_Values,8);    //read all 8 channels (SPI mode)
+  }
+    
+
+  //This is the Analog Reader part  
   //CHIP A  
   for (int i=0;i<8;i++)
   {
-    Serial.print(ADC_A_Values[i]);    
-    Serial.print(",");         
+    serial_writeBytes(ADC_A_Values[i]);
   }
 
   //CHIP B  
   for (int i=0;i<8;i++)
   {
-    Serial.print(ADC_B_Values[i]);    
-    Serial.print(",");         
+    serial_writeBytes(ADC_B_Values[i]);    
   }
-
+  
   //CHIP C  
   for (int i=0;i<8;i++)
   {
-    Serial.print(ADC_C_Values[i]);    
-    Serial.print(",");         
+    serial_writeBytes(0);    
+    //serial_writeBytes(ADC_C_Values[i]);    
   }
 
   //CHIP D  
   for (int i=0;i<8;i++)
-  {
-    Serial.print(ADC_D_Values[i]);    
-    Serial.print(",");         
+  {    
+    serial_writeBytes(0);    
+    // serial_writeBytes(ADC_D_Values[i]);    
   }
   Serial.println();
-  
-  
   // Delay so we don't swamp the serial port
-  delay(15);
+  delay(4);
 }
+
+
+void printID(int error,uint8_t c){
+  Serial.print(F("WHO_AM_I : "));
+  Serial.print(c,HEX);
+  Serial.print(F(", error = "));
+  Serial.println(error,DEC);
+}
+
+void printPower(int error,uint8_t c){
+  Serial.print(F("PWR_MGMT_2 : "));
+  Serial.print(c,HEX);
+  Serial.print(F(", error = "));
+  Serial.println(error,DEC);
+}
+
+void serial_writeBytes(uint16_t integer){
+  if(bytestream){
+    uint8_t *byteArray = int2bytes(integer);
+    for(int i=0; i<sizeof(byteArray); i++){
+      Serial.write(byteArray[i]);
+    }
+  }else{
+    Serial.print(integer);
+    Serial.print(",");  
+  }
+}
+
+uint8_t *int2bytes(uint16_t integer)
+{
+  uint8_t bytes[2];
+  uint16_t number = 5703;               // 0001 0110 0100 0111
+  uint16_t mask   = B11111111;          // 0000 0000 1111 1111
+  uint8_t first_half  = integer >> 8;   // >>>> >>>> 0001 0110
+  uint8_t second_half = integer & mask; // ____ ____ 0100 0111
+  bytes[0] = first_half;
+  bytes[1] = second_half;
+  return bytes;
+}
+
 
 void set_last_read_angle_data(unsigned long time, float x, float y, float z, float x_gyro, float y_gyro, float z_gyro)
 {
@@ -969,10 +975,10 @@ void calibrate_sensors()
     x_accel += accel_t_gyro.value.x_accel;
     y_accel += accel_t_gyro.value.y_accel;
     z_accel += accel_t_gyro.value.z_accel;
-    x_gyro += accel_t_gyro.value.x_gyro;
-    y_gyro += accel_t_gyro.value.y_gyro;
-    z_gyro += accel_t_gyro.value.z_gyro;
-    delay(100);
+    x_gyro  += accel_t_gyro.value.x_gyro;
+    y_gyro  += accel_t_gyro.value.y_gyro;
+    z_gyro  += accel_t_gyro.value.z_gyro;
+    delay(10);
   }
   x_accel /= num_readings;
   y_accel /= num_readings;
