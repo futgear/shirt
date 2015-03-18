@@ -1,4 +1,7 @@
 
+// MCP320x and MPU6050 Code is from http://playground.arduino.cc
+
+
 // MPU-6050 Accelerometer + Gyro
 // -----------------------------
 //
@@ -6,46 +9,11 @@
 // June 2012
 // Open Source / Public Domain
 //
-// Using Arduino 1.0.1
-// It will not work with an older version, 
-// since Wire.endTransmission() uses a parameter 
-// to hold or release the I2C bus.
-//
-// Documentation:
-// - The InvenSense documents:
-//   - "MPU-6000 and MPU-6050 Product Specification",
-//     PS-MPU-6000A.pdf
-//   - "MPU-6000 and MPU-6050 Register Map and Descriptions",
-//     RM-MPU-6000A.pdf or RS-MPU-6000A.pdf
-//   - "MPU-6000/MPU-6050 9-Axis Evaluation Board User Guide"
-//     AN-MPU-6000EVB.pdf
-// 
-// The accuracy is 16-bits.
-//
-// Temperature sensor from -40 to +85 degrees Celsius
-//   340 per degrees, -512 at 35 degrees.
-//
-// At power-up, all registers are zero, except these two:
-//      Register 0x6B (PWR_MGMT_2) = 0x40  (I read zero).
-//      Register 0x75 (WHO_AM_I)   = 0x68.
-// 
 
 #include <Wire.h>
 #include "AH_MCP320x.h"
 #include <SPI.h>
 
-// The name of the sensor is "MPU-6050".
-// For program code, I omit the '-', 
-// therefor I use the name "MPU6050....".
-
-// Register names according to the datasheet.
-// According to the InvenSense document 
-// "MPU-6000 and MPU-6050 Register Map 
-// and Descriptions Revision 3.2", there are no registers
-// at 0x02 ... 0x18, but according other information 
-// the registers in that unknown area are for gain 
-// and offsets.
-// 
 #define MPU6050_AUX_VDDIO          0x01   // R/W
 #define MPU6050_SMPLRT_DIV         0x19   // R/W
 #define MPU6050_CONFIG             0x1A   // R/W
@@ -839,14 +807,12 @@ void loop()
     ADC_D_SPI.readALL(ADC_D_Values,8);    //read all 8 channels (SPI mode)
   }
     
-
   //This is the Analog Reader part  
   //CHIP A  
   for (int i=0;i<8;i++)
   {
     serial_writeBytes(ADC_A_Values[i]);
   }
-
   //CHIP B  
   for (int i=0;i<8;i++)
   {

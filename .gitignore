@@ -1,2 +1,6 @@
 processing*
 .DS_Store
+VRPN/Client/Debug
+VRPN/Client/sevengearSuitTestclient/Debug
+VRPN/Server/Debug
+VRPN/Server/sevengearSuit/Debug
